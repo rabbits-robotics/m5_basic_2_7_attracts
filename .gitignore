@@ -9,6 +9,9 @@
 .vscode/launch.json
 .vscode/ipch
 
+# Claude Code local settings
+.claude/
+
 # Build artifacts
 *.o
 *.bin
