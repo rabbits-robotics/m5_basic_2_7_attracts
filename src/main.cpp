@@ -1,5 +1,6 @@
 #include <M5Stack.h>
 
+#include "lcd_view.hpp"
 #include "state.hpp"
 
 static State g_state;
@@ -7,12 +8,13 @@ static State g_state;
 void setup()
 {
   M5.begin();
-  M5.Lcd.fillScreen(TFT_BLACK);
+  lcd_init();
+  lcd_draw(g_state);
 }
 
 void loop()
 {
   M5.update();
-  (void)g_state;
-  delay(10);
+  lcd_draw(g_state);
+  delay(100);
 }
