@@ -2,6 +2,7 @@
 
 #include <M5Stack.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -19,6 +20,49 @@ inline uint16_t mode_color(Mode m)
     case Mode::ESTOP:       return TFT_RED;
   }
   return TFT_BLACK;
+}
+
+inline uint16_t load_color(uint8_t v)
+{
+  switch (v) {
+    case 1: return TFT_GREEN;   // FWD
+    case 2: return TFT_ORANGE;  // REV
+  }
+  return TFT_WHITE;  // STOP / unknown
+}
+
+inline uint16_t fire_color(uint8_t v)
+{
+  switch (v) {
+    case 1: return TFT_YELLOW;  // LOW
+    case 2: return TFT_RED;     // HIGH
+  }
+  return TFT_WHITE;  // STOP / unknown
+}
+
+inline uint16_t speed_color(uint8_t v)
+{
+  return v == 1 ? TFT_RED : TFT_WHITE;  // HIGH red, LOW white
+}
+
+inline uint16_t chassis_color(uint8_t v)
+{
+  return v == 1 ? TFT_CYAN : TFT_WHITE;  // INF cyan, NORM white
+}
+
+inline uint16_t velocity_color(float v)
+{
+  if (std::fabs(v) < 0.05f) return TFT_DARKGREY;
+  return v > 0 ? TFT_GREEN : TFT_ORANGE;
+}
+
+inline uint16_t pitch_color(float p)
+{
+  constexpr float lo = -3.14159265f / 12.0f;  // -15°
+  constexpr float hi =  3.14159265f /  6.0f;  // +30°
+  if (p <= lo * 0.9f || p >= hi * 0.9f) return TFT_RED;
+  if (std::fabs(p) < 0.02f) return TFT_DARKGREY;
+  return p > 0 ? TFT_GREEN : TFT_ORANGE;
 }
 
 struct Prev
@@ -103,12 +147,26 @@ inline void lcd_draw(const State &s)
   }
 
   M5.Lcd.setTextSize(2);
-  M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
 
   if (force || p.vx != s.cmd.vx || p.vy != s.cmd.vy || p.vz != s.cmd.vz) {
     M5.Lcd.fillRect(4, 54, 316, 16, TFT_BLACK);
     M5.Lcd.setCursor(4, 54);
-    M5.Lcd.printf("vx%+5.2f vy%+5.2f vz%+5.2f", s.cmd.vx, s.cmd.vy, s.cmd.vz);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print("vx");
+    M5.Lcd.setTextColor(velocity_color(s.cmd.vx), TFT_BLACK);
+    M5.Lcd.printf("%+5.2f", s.cmd.vx);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print(" vy");
+    M5.Lcd.setTextColor(velocity_color(s.cmd.vy), TFT_BLACK);
+    M5.Lcd.printf("%+5.2f", s.cmd.vy);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print(" vz");
+    M5.Lcd.setTextColor(velocity_color(s.cmd.vz), TFT_BLACK);
+    M5.Lcd.printf("%+5.2f", s.cmd.vz);
+
     p.vx = s.cmd.vx;
     p.vy = s.cmd.vy;
     p.vz = s.cmd.vz;
@@ -117,7 +175,17 @@ inline void lcd_draw(const State &s)
   if (force || p.yaw != s.cmd.yaw || p.pitch != s.cmd.pitch) {
     M5.Lcd.fillRect(4, 74, 316, 16, TFT_BLACK);
     M5.Lcd.setCursor(4, 74);
-    M5.Lcd.printf("yaw%+6.3f  pitch%+6.3f", s.cmd.yaw, s.cmd.pitch);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print("yaw");
+    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+    M5.Lcd.printf("%+6.3f", s.cmd.yaw);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print("  pitch");
+    M5.Lcd.setTextColor(pitch_color(s.cmd.pitch), TFT_BLACK);
+    M5.Lcd.printf("%+6.3f", s.cmd.pitch);
+
     p.yaw = s.cmd.yaw;
     p.pitch = s.cmd.pitch;
   }
@@ -126,12 +194,29 @@ inline void lcd_draw(const State &s)
       p.speed != s.cmd.speed || p.chassis != s.cmd.chassis)
   {
     M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextColor(TFT_WHITE, TFT_BLACK);
     M5.Lcd.fillRect(4, 94, 316, 16, TFT_BLACK);
     M5.Lcd.setCursor(4, 94);
-    M5.Lcd.printf("ld %s fr %s sp %c ch %c",
-                  load_label(s.cmd.load), fire_label(s.cmd.fire),
-                  speed_label(s.cmd.speed)[0], chassis_label(s.cmd.chassis)[0]);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print("ld ");
+    M5.Lcd.setTextColor(load_color(s.cmd.load), TFT_BLACK);
+    M5.Lcd.print(load_label(s.cmd.load));
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print(" fr ");
+    M5.Lcd.setTextColor(fire_color(s.cmd.fire), TFT_BLACK);
+    M5.Lcd.print(fire_label(s.cmd.fire));
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print(" sp ");
+    M5.Lcd.setTextColor(speed_color(s.cmd.speed), TFT_BLACK);
+    M5.Lcd.print(speed_label(s.cmd.speed)[0]);
+
+    M5.Lcd.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+    M5.Lcd.print(" ch ");
+    M5.Lcd.setTextColor(chassis_color(s.cmd.chassis), TFT_BLACK);
+    M5.Lcd.print(chassis_label(s.cmd.chassis)[0]);
+
     p.load = s.cmd.load;
     p.fire = s.cmd.fire;
     p.speed = s.cmd.speed;
